@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Hello, World!</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+      <h1 class="title">Hello World! </h1>
+      <p id="currentTime"></p>
+      <script src="script.js"></script>
+  </body>
+</html><!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mini Game Leo Núi Hoạt Hình</title>
+<style>
+body { font-family: 'Comic Sans MS', sans-serif; background: #cce7ff; margin: 0; overflow-x: hidden; }
+#startScreen, #gameScreen, #endScreen { width: 100%; height: 100vh; display: flex; justify-content: center; align-items: center; flex-direction: column; }
+#gameScreen, #endScreen { display: none; position: relative; }
+.map { width: 80%; height: 400px; background: url('https://i.imgur.com/KhGx4MT.png') no-repeat center/contain; position: relative; margin-bottom: 20px; }
+.character { width: 50px; height: 50px; background: url('https://i.imgur.com/2jYm7vV.png') no-repeat center/contain; position: absolute; bottom: 0; left: 0; transition: all 0.8s ease-in-out; }
+.jump { animation: jump 0.8s ease-in-out; }
+@keyframes jump { 0%{transform:translateY(0);} 50%{transform:translateY(-30px);} 100%{transform:translateY(0);} }
+.wave { animation: wave 0.5s alternate 3; }
+@keyframes wave {0%{transform:rotate(0deg);}50%{transform:rotate(20deg);}100%{transform:rotate(-10deg);}}
+.bubble { position: absolute; padding: 5px 10px; background: yellow; border-radius: 10px; font-weight: bold; animation: floatup 1s ease forwards; pointer-events: none; }
+@keyframes floatup { 0%{opacity:1; transform:translateY(0);} 100%{opacity:0; transform:translateY(-50px);} }
+.questionBox { background: #fff; border: 2px solid #000; border-radius: 10px; padding: 20px; text-align: center; width: 400px; }
+.answerBtn { display: block; margin: 10px auto; padding: 10px 20px; cursor: pointer; border-radius: 5px; border: none; background: #ffbb33; font-size: 16px; }
+.answerBtn:hover { background: #ffaa00; }
+input[type=text] { padding: 10px; font-size: 16px; border-radius: 5px; border: 2px solid #000; margin-bottom: 10px; }
+button { padding: 10px 20px; font-size: 16px; border-radius: 5px; cursor: pointer; background: #44c767; border: none; color: white; }
+button:hover { background: #5cbf2a; }
+</style>
+</head>
+<body>
+
+<div id="startScreen">
+    <h1>Chào mừng đến trò chơi Leo Núi!</h1>
+    <input type="text" id="playerName" placeholder="Nhập tên bạn">
+    <button onclick="startGame()">Bắt đầu</button>
+</div>
+
+<div id="gameScreen">
+    <div class="map" id="map">
+        <div class="character" id="character"></div>
+    </div>
+    <div class="questionBox" id="questionBox">
+        <h2 id="questionText"></h2>
+        <button class="answerBtn" onclick="checkAnswer(0)" id="answer0"></button>
+        <button class="answerBtn" onclick="checkAnswer(1)" id="answer1"></button>
+        <button class="answerBtn" onclick="checkAnswer(2)" id="answer2"></button>
+    </div>
+</div>
+
+<div id="endScreen">
+    <h1>Kết thúc trò chơi!</h1>
+    <h2 id="finalMessage"></h2>
+    <h3 id="finalScore"></h3>
+    <button onclick="restartGame()">Chơi lại</button>
+</div>
+
+<audio id="jumpSound" src="https://freesound.org/data/previews/341/341695_5260877-lq.mp3"></audio>
+<audio id="correctSound" src="https://freesound.org/data/previews/335/335908_6244033-lq.mp3"></audio>
+<audio id="wrongSound" src="https://freesound.org/data/previews/256/256113_3263906-lq.mp3"></audio>
+
+<script>
+const player = { name: '', score: 0, current: 0 };
+const positions = [
+    {left: '0%', bottom: '0%'},{left:'10%',bottom:'10%'},{left:'20%',bottom:'20%'},
+    {left:'30%',bottom:'15%'},{left:'40%',bottom:'25%'},{left:'50%',bottom:'10%'},
+    {left:'60%',bottom:'20%'},{left:'70%',bottom:'15%'},{left:'80%',bottom:'25%'},{left:'90%',bottom:'30%'}
+];
+
+const questions = [
+    {q:"It's like magic,but actually technology that makes life easier",a:["Techno-wizardry","Old-fashioned tool","Manual switch"], correct:0},
+    {q:"The newest,most modern type of technology,not the outdated kind.",a:["Broken device","Cutting-edge technology","Outdated system"], correct:1},
+    {q:"The place where you press a button or touch to turn on lights,play music,or control things in the house",a:["Light buld","Dining table","Control panel"], correct:2},
+    {q:"When many devices in the house connect and word together",a:["Intergrated system","Isolated device","Separate rooms"], correct:0},
+    {q:"The very first time a spacecraft is launched into space",a:["Maiden flight","Final misson","Daily trip"], correct:0},
+    {q:"The small round cabin where astronauts sit",a:["Cockpit","Capsule","Basket"], correct:1},
+    {q:"The exact time period when a rocket can be launched safely",a:["Open door","Launch window","Time gap"], correct:1},
+    {q:"The spacecraft opens giant parachutes to slow down before landing",a:["Deploy parachutes","Drop luggage","Spread wings"], correct:0},
+    {q:"A system that saves energy by adjusting lights and temperature automatically",a:["Power waste","Gas stove","Energy-efficient system"], correct:2},
+    {q:"The big rocket part that carries the spacecraft into space,then separates",a:["Launch vehicle","Space chair","Cargo box"], correct:0}
+];
+
+function startGame(){
+    const nameInput = document.getElementById('playerName').value.trim();
+    if(nameInput===''){ alert("Vui lòng nhập tên!"); return; }
+    player.name=nameInput;
+    document.getElementById('startScreen').style.display='none';
+    document.getElementById('gameScreen').style.display='flex';
+    showQuestion();
+}
+
+function showQuestion(){
+    if(player.current>=questions.length){ endGame(); return; }
+    const q = questions[player.current];
+    document.getElementById('questionText').innerText = q.q;
+    q.a.forEach((ans,i)=>{ document.getElementById('answer'+i).innerText = ans; });
+}
+
+function checkAnswer(choice){
+    const char = document.getElementById('character');
+    char.classList.add('jump');
+    document.getElementById('jumpSound').play();
+    setTimeout(()=>{ char.classList.remove('jump'); },800);
+
+    const bubble = document.createElement('div');
+    bubble.className='bubble';
+    const charRect = char.getBoundingClientRect();
+    const mapRect = document.getElementById('map').getBoundingClientRect();
+    bubble.style.left = (charRect.left-mapRect.left + 20) + 'px';
+    bubble.style.bottom = (mapRect.bottom-charRect.bottom+10) + 'px';
+
+    if(choice === questions[player.current].correct){
+        player.score++;
+        char.classList.add('wave');
+        document.getElementById('correctSound').play();
+        bubble.innerText='Good!';
+        setTimeout(()=>{ char.classList.remove('wave'); },1500);
+    }else{
+        document.getElementById('wrongSound').play();
+        bubble.innerText='Oops!';
+    }
+    document.getElementById('map').appendChild(bubble);
+    setTimeout(()=>{ bubble.remove(); },1000);
+
+    moveCharacter();
+}
+
+function moveCharacter(){
+    const char = document.getElementById('character');
+    char.style.left = positions[player.current].left;
+    char.style.bottom = positions[player.current].bottom;
+    player.current++;
+    setTimeout(showQuestion,1000);
+}
+
+function endGame(){
+    document.getElementById('gameScreen').style.display='none';
+    document.getElementById('endScreen').style.display='flex';
+    document.getElementById('finalMessage').innerText = `Chúc mừng ${player.name}!`;
+    document.getElementById('finalScore').innerText = `Bạn trả lời đúng ${player.score} / ${questions.length} câu.`;
+}
+
+function restartGame(){
+    player.score=0; player.current=0;
+    document.getElementById('endScreen').style.display='none';
+    document.getElementById('startScreen').style.display='flex';
+    document.getElementById('playerName').value='';
+}
+</script>
+
+</body>
+</html>
